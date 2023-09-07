@@ -45,18 +45,26 @@ export default class HeatmapCalendar extends Plugin {
 	 * Example: first of january is 1, third of february is 34 (31+3) 
 	 * @param date
 	 */
-	
-	getHowManyDaysIntoYear(date: Date): number {
+
+	getDaysInBetween(startDate: Date, endDate: Date): number {
 		return (
-			(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) -
-				Date.UTC(date.getUTCFullYear(), 0, 0)) / 24 / 60 / 60 / 1000
+			Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()) -
+			Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())
 		)
 	}
-	getHowManyDaysIntoYearLocal(date: Date): number {
+	
+	getDaysInBetweenLocal(startDate: Date, endDate: Date): number {
 		return (
-			(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) -
-				Date.UTC(date.getFullYear(), 0, 0)) / 24 / 60 / 60 / 1000
+			Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) -
+			Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
 		)
+	}
+	getHowManyDaysIntoYear(date: Date): number {
+		return this.getDaysInBetween(new Date(Date.UTC(date.getFullYear(), 0, 0)), date) / 24 /60/60/1000
+	}
+	getHowManyDaysIntoYearLocal(date: Date): number {
+
+		return this.getDaysInBetweenLocal(new Date(Date.UTC(date.getFullYear(), 0, 0)), date) / 24 /60/60/1000
 	}
 	/** 
 	 * Removes HTMLElements passed as entry.content and outside of the displayed year from rendering above the calendar
@@ -239,7 +247,7 @@ export default class HeatmapCalendar extends Plugin {
 	}
 
 	async loadSettings() {
-		console.log( "heyoh", await this.loadData() );
+		console.log( "heyoh", await this.loadData() )
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData())
 	}
 
