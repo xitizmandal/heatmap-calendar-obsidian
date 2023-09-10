@@ -2,7 +2,10 @@ import { Plugin, } from 'obsidian'
 import HeatmapCalendarSettingsTab from "settings"
 
 interface CalendarData {
-    year: number
+    year: number,
+    month?: number,
+    startDate: string,
+    endDate: string,
     colors: {
         [index: string | number]: string[]
     } | string
@@ -27,6 +30,8 @@ interface Entry {
 }
 const DEFAULT_SETTINGS: CalendarData = {
     year: new Date().getFullYear(),
+    startDate: new Date(new Date().getFullYear(), 0, 1).toString(),
+    endDate: new Date(new Date().getFullYear(), 11, 31).toString(),
     colors: {
         default: ["#c6e48b", "#7bc96f", "#49af5d", "#2e8840", "#196127",],
     },
@@ -50,21 +55,21 @@ export default class HeatmapCalendar extends Plugin {
         return (
             Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate()) -
             Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate())
-        )
+        ) / 24 / 60 / 60 / 1000
     }
 
     getDaysInBetweenLocal(startDate: Date, endDate: Date): number {
         return (
             Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) -
             Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate())
-        )
+        ) / 24 / 60 / 60 / 1000
     }
     getHowManyDaysIntoYear(date: Date): number {
-        return this.getDaysInBetween(new Date(Date.UTC(date.getFullYear(), 0, 0)), date) / 24 / 60 / 60 / 1000
+        return this.getDaysInBetween(new Date(Date.UTC(date.getFullYear(), 0, 0)), date)
     }
     getHowManyDaysIntoYearLocal(date: Date): number {
 
-        return this.getDaysInBetweenLocal(new Date(Date.UTC(date.getFullYear(), 0, 0)), date) / 24 / 60 / 60 / 1000
+        return this.getDaysInBetweenLocal(new Date(Date.UTC(date.getFullYear(), 0, 0)), date)
     }
     /** 
      * Removes HTMLElements passed as entry.content and outside of the displayed year from rendering above the calendar
@@ -94,6 +99,7 @@ export default class HeatmapCalendar extends Plugin {
         window.renderHeatmapCalendar = (el: HTMLElement, calendarData: CalendarData): void => {
 
             const year = calendarData.year ?? this.settings.year
+            const month = calendarData.month ?? -1
             const colors = typeof calendarData.colors === "string"
                 ? this.settings.colors[calendarData.colors]
                     ? { [calendarData.colors]: this.settings.colors[calendarData.colors], }
@@ -102,7 +108,20 @@ export default class HeatmapCalendar extends Plugin {
 
             this.removeHtmlElementsNotInYear(calendarData.entries, year)
 
-            const calEntries = calendarData.entries.filter(e => new Date(e.date + "T00:00").getFullYear() === year) ?? this.settings.entries
+            // TODO: Need to filter this based on range of dates
+            const startDateString = calendarData.startDate ?? this.settings.startDate
+            const endDateString = calendarData.endDate ?? this.settings.endDate
+
+            // FIX: check for date ranges
+            const startDate = month > -1 ? new Date(year, month, 1) : new Date(startDateString)
+            const endDate = month > -1 ? new Date(year, month + 1, 0) : new Date(endDateString)
+            console.log(startDate, endDate)
+
+            const calEntries = calendarData.entries.filter(e => {
+                let d = new Date(e.date + "T00:00")
+                return d >= startDate && d <= endDate
+            }
+            )
 
             const showCurrentDayBorder = calendarData.showCurrentDayBorder ?? this.settings.showCurrentDayBorder
 
@@ -115,6 +134,7 @@ export default class HeatmapCalendar extends Plugin {
             const intensityScaleEnd = calendarData.intensityScaleEnd ?? maximumIntensity
 
             const mappedEntries: Entry[] = []
+			// TODO: Check for the entries
             calEntries.forEach(e => {
                 const newEntry = {
                     intensity: defaultEntryIntensity,
@@ -131,6 +151,7 @@ export default class HeatmapCalendar extends Plugin {
 
                 mappedEntries[this.getHowManyDaysIntoYear(new Date(e.date))] = newEntry
             })
+			console.log(calEntries)
 
             const firstDayOfYear = new Date(Date.UTC(year, 0, 1))
             let numberOfEmptyDaysBeforeYearBegins = (firstDayOfYear.getUTCDay() + 6) % 7
@@ -149,8 +170,14 @@ export default class HeatmapCalendar extends Plugin {
                 numberOfEmptyDaysBeforeYearBegins--
             }
             const lastDayOfYear = new Date(Date.UTC(year, 11, 31))
-            const numberOfDaysInYear = this.getHowManyDaysIntoYear(lastDayOfYear) //eg 365 or 366
+			// TODO: Fix the number of days correspondances with
+			// 1. Boxes
+			// 2. Entries
+			// 3. CSS/Views
+            // const numberOfDaysInYear = this.getHowManyDaysIntoYear(lastDayOfYear) //eg 365 or 366
+			const numberOfDaysInYear = this.getDaysInBetween(startDate, endDate)
             const todaysDayNumberLocal = this.getHowManyDaysIntoYearLocal(new Date())
+
 
             for (let day = 1; day <= numberOfDaysInYear; day++) {
 
