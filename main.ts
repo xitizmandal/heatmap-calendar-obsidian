@@ -6,6 +6,7 @@ interface CalendarData {
     month?: number,
     startDate?: string,
     endDate?: string,
+    expandedView: boolean,
     colors: {
         [index: string | number]: string[]
     } | string
@@ -38,6 +39,7 @@ const DEFAULT_SETTINGS: CalendarData = {
     defaultEntryIntensity: 4,
     intensityScaleStart: 1,
     intensityScaleEnd: 5,
+    expandedView: false,
 }
 export default class HeatmapCalendar extends Plugin {
 
@@ -103,6 +105,7 @@ export default class HeatmapCalendar extends Plugin {
                     ? { [calendarData.colors]: this.settings.colors[calendarData.colors], }
                     : this.settings.colors
                 : calendarData.colors ?? this.settings.colors
+            const expandedView = calendarData.expandedView ?? this.settings.expandedView
 
             // this.removeHtmlElementsNotInYear(calendarData.entries, year)
 
@@ -220,11 +223,9 @@ export default class HeatmapCalendar extends Plugin {
             const noOfMonths = (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth() + 1)
 
             // Get number of days left for starting month and days into ending month
-            const weeksLeftForStartMonth = Math.floor((30 - startDate.getDate()) / 7) + (numberOfEmptyDaysBeforeYearBegins == 0 ? 0 : 1)
+            const weeksLeftForStartMonth = Math.floor((30 - startDate.getDate()) / 7) + (numberOfEmptyDaysBeforeYearBegins == 6 ? 1 : 0)
             const weeksCompletedForEndMonth = Math.floor(endDate.getDate() / 7) + 1
 
-			let repeatValues = noOfMonths -2 == 0 ? "" : `repeat(${noOfMonths - 2}, minmax(0, 4fr))`
-            heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `${weeksLeftForStartMonth}fr ${repeatValues} ${weeksCompletedForEndMonth}fr`)
 
             const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
@@ -248,7 +249,20 @@ export default class HeatmapCalendar extends Plugin {
             })
 
             let noOfWeeks = Math.floor(numberOfDaysInYearEndDate / 7) + 1
-            heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks}, minmax(0, 1fr))`)
+            if (expandedView) {
+                heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks}, minmax(0, 1fr))`)
+                let repeatValuesForMonths = noOfMonths - 2 < 0 ? "" : `repeat(${noOfMonths - 2}, minmax(0, ${(noOfWeeks - weeksLeftForStartMonth - weeksCompletedForEndMonth) / (noOfMonths - 2)}fr))`
+                heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `${weeksLeftForStartMonth}fr ${repeatValuesForMonths} ${weeksCompletedForEndMonth}fr`)
+            } else {
+
+                // 4 is based on the 4fr values. 53 is based on estimated 53 weeks of a year
+                let repeatValuesForMonths = noOfMonths - 2 < 0 ? "" : `repeat(${noOfMonths - 2}, minmax(0, 4fr))`
+                let padding = 53 - ((noOfMonths - 2 < 0 ? 0 : (noOfMonths - 2) * 4) + weeksLeftForStartMonth + weeksCompletedForEndMonth)
+                let yearPadding = noOfMonths < 12 ? `minmax(0, ${padding}fr)` : ""
+                heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks > 53 ? noOfWeeks : 53}, minmax(0, 1fr))`)
+                heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `${weeksLeftForStartMonth}fr ${repeatValuesForMonths} ${weeksCompletedForEndMonth}fr ${yearPadding}`)
+            }
+
             boxes.forEach(e => {
                 const entry = createEl("li", {
                     attr: {
