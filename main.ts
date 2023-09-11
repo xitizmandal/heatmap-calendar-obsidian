@@ -224,37 +224,33 @@ export default class HeatmapCalendar extends Plugin {
                 parent: heatmapCalendarGraphDiv,
             })
 
-            createEl("li", { text: "Jan", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Feb", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Mar", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Apr", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "May", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Jun", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Jul", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Aug", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Sep", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Oct", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Nov", parent: heatmapCalendarMonthsUl, })
-            createEl("li", { text: "Dec", parent: heatmapCalendarMonthsUl, })
+
+			// start date and end date differes year + differences in month
+			const noOfMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth() + 1 )
+			console.log(noOfMonths)
+			heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `repeat(${noOfMonths+1}, minmax(0, 1fr))`)
+			// TODO: check for more than 12 months
+			const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+			for (let month = startDate.getMonth(); month <= noOfMonths; month++) {
+				createEl("li", { text: MONTHS[month % 12], parent: heatmapCalendarMonthsUl, })
+			}
 
             const heatmapCalendarDaysUl = createEl("ul", {
                 cls: "heatmap-calendar-days",
                 parent: heatmapCalendarGraphDiv,
             })
 
-            createEl("li", { text: "Mon", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Tue", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Wed", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Thu", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Fri", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Sat", parent: heatmapCalendarDaysUl, })
-            createEl("li", { text: "Sun", parent: heatmapCalendarDaysUl, })
+			const WEEKS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+			WEEKS.map(e => createEl("li", { text: e, parent: heatmapCalendarDaysUl, }))
 
             const heatmapCalendarBoxesUl = createEl("ul", {
                 cls: "heatmap-calendar-boxes",
                 parent: heatmapCalendarGraphDiv,
             })
 
+			let noOfWeeks = Math.floor(numberOfDaysInYearEndDate / 7) + 1
+			console.log("weeks", noOfWeeks)
+			heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks}, minmax(0, 1fr))`)
             boxes.forEach(e => {
                 const entry = createEl("li", {
                     attr: {
