@@ -159,8 +159,7 @@ export default class HeatmapCalendar extends Plugin {
                 mappedEntries[this.getDaysInBetween(startDate, new Date(e.date)) + 1] = newEntry
             })
 
-            const startDateUTC = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()))
-            let numberOfEmptyDaysBeforeYearBegins = (startDateUTC.getUTCDay() + 6) % 7
+            let numberOfEmptyDaysBeforeYearBegins = (startDate.getUTCDay() + 6) % 7
 
             interface Box {
                 backgroundColor?: string;
@@ -174,9 +173,8 @@ export default class HeatmapCalendar extends Plugin {
             for (let i = 0; i < numberOfEmptyDaysBeforeYearBegins; i++) {
                 boxes.push({ backgroundColor: "transparent", })
             }
-            const endDateUTC = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()))
-            const numberOfDaysInYearEndDate = this.getDaysInBetween(startDateUTC, endDateUTC) + 1
-            const todaysDayNumberLocal = this.getDaysInBetweenLocal(startDateUTC, new Date()) + 1
+            const numberOfDaysInYearEndDate = this.getDaysInBetween(startDate, endDate) + 1
+            const todaysDayNumberLocal = this.getDaysInBetweenLocal(startDate, new Date()) + 1
 
 
             for (let day = 1; day <= numberOfDaysInYearEndDate; day++) {
