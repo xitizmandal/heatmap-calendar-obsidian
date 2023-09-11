@@ -97,27 +97,33 @@ export default class HeatmapCalendar extends Plugin {
         window.renderHeatmapCalendar = (el: HTMLElement, calendarData: CalendarData): void => {
 
             const year = calendarData.year ?? this.settings.year
-            const month = (calendarData.month ?? 0 ) - 1
+            const month = (calendarData.month ?? 0) - 1
             const colors = typeof calendarData.colors === "string"
                 ? this.settings.colors[calendarData.colors]
                     ? { [calendarData.colors]: this.settings.colors[calendarData.colors], }
                     : this.settings.colors
                 : calendarData.colors ?? this.settings.colors
 
-            this.removeHtmlElementsNotInYear(calendarData.entries, year)
+            // this.removeHtmlElementsNotInYear(calendarData.entries, year)
 
-			//NOTE: check if calendarData date needs to be converted to UTC
-			const startDate = ((year:number, month: number) => {
-				if (month > -1) return new Date(Date.UTC(year, month, 1))
-				else if (calendarData.startDate) return new Date(calendarData.startDate)
-				else return new Date(Date.UTC(year, 0, 1))
-			})(year, month)
+            //NOTE: check if calendarData date needs to be converted to UTC
+            const startDate = ((year: number, month: number) => {
+                if (month > -1) return new Date(Date.UTC(year, month, 1))
+                else if (calendarData.startDate) {
+                    let d = new Date(calendarData.startDate)
+                    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+                }
+                else return new Date(Date.UTC(year, 0, 1))
+            })(year, month)
 
-			const endDate = ((year:number, month: number) => {
-				if (month > -1) return new Date(Date.UTC(year, month+1, 0))
-				else if (calendarData.endDate) return new Date(calendarData.endDate)
-				else return new Date(Date.UTC(year, 11, 31))
-			})(year, month)
+            const endDate = ((year: number, month: number) => {
+                if (month > -1) return new Date(Date.UTC(year, month + 1, 0))
+                else if (calendarData.endDate) {
+                    let d = new Date(calendarData.endDate)
+                    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+                }
+                else return new Date(Date.UTC(year, 11, 31))
+            })(year, month)
 
             const calEntries = calendarData.entries.filter(e => {
                 let d = new Date(e.date)
@@ -149,12 +155,12 @@ export default class HeatmapCalendar extends Plugin {
                 if (minimumIntensity === maximumIntensity && intensityScaleStart === intensityScaleEnd) newEntry.intensity = numOfColorIntensities
                 else newEntry.intensity = Math.round(this.map(newEntry.intensity, intensityScaleStart, intensityScaleEnd, 1, numOfColorIntensities))
 
-				const offset = (new Date(e.date).getFullYear() - startDate.getFullYear()) * 365
-				mappedEntries[offset + this.getHowManyDaysIntoYear(new Date(e.date))] = newEntry
+                // index starts from 0, so add 1
+                mappedEntries[this.getDaysInBetween(startDate, new Date(e.date)) + 1] = newEntry
             })
 
             const startDateUTC = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()))
-			let numberOfEmptyDaysBeforeYearBegins = (startDateUTC.getUTCDay() + 6) % 7
+            let numberOfEmptyDaysBeforeYearBegins = (startDateUTC.getUTCDay() + 6) % 7
 
             interface Box {
                 backgroundColor?: string;
@@ -165,19 +171,15 @@ export default class HeatmapCalendar extends Plugin {
 
             const boxes: Array<Box> = []
 
-            while (numberOfEmptyDaysBeforeYearBegins) {
+            for (let i = 0; i < numberOfEmptyDaysBeforeYearBegins; i++) {
                 boxes.push({ backgroundColor: "transparent", })
-                numberOfEmptyDaysBeforeYearBegins--
             }
             const endDateUTC = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()))
-			const numberOfDaysInYearStartDate = this.getHowManyDaysIntoYear(startDateUTC)
-			//
-			// TODO: calculate days based on years and not 365
-			const numberOfDaysInYearEndDate = (endDateUTC.getFullYear() - startDateUTC.getFullYear()) * 365 + this.getHowManyDaysIntoYear(endDateUTC)
-            const todaysDayNumberLocal = this.getHowManyDaysIntoYearLocal(new Date())
+            const numberOfDaysInYearEndDate = this.getDaysInBetween(startDateUTC, endDateUTC) + 1
+            const todaysDayNumberLocal = this.getDaysInBetweenLocal(startDateUTC, new Date()) + 1
 
 
-            for (let day = numberOfDaysInYearStartDate; day <= numberOfDaysInYearEndDate; day++) {
+            for (let day = 1; day <= numberOfDaysInYearEndDate; day++) {
                 const box: Box = {
                     classNames: [],
                 }
@@ -216,29 +218,39 @@ export default class HeatmapCalendar extends Plugin {
             })
 
 
-			// start date and end date differes year + differences in month
-			const noOfMonths = (endDate.getFullYear() - startDate.getFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth())
-			heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `repeat(${noOfMonths+1}, minmax(0, 1fr))`)
-			const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-			for (let month = startDate.getMonth(); month <= noOfMonths; month++) {
-				createEl("li", { text: MONTHS[month % 12], parent: heatmapCalendarMonthsUl, })
-			}
+            // start date and end date differes year + differences in month
+            const noOfMonths = (endDate.getUTCFullYear() - startDate.getUTCFullYear()) * 12 + (endDate.getMonth() - startDate.getMonth() + 1)
+
+            // Get number of days left for starting month and days into ending month
+            const weeksLeftForStartMonth = Math.floor((30 - startDate.getDate()) / 7) + (numberOfEmptyDaysBeforeYearBegins == 0 ? 0 : 1)
+            const weeksCompletedForEndMonth = Math.floor(endDate.getDate() / 7) + 1
+
+			let repeatValues = noOfMonths -2 == 0 ? "" : `repeat(${noOfMonths - 2}, minmax(0, 4fr))`
+            heatmapCalendarMonthsUl.style.setProperty("grid-template-columns", `${weeksLeftForStartMonth}fr ${repeatValues} ${weeksCompletedForEndMonth}fr`)
+
+            const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+            let startMonth = startDate.getMonth()
+            for (let month = 1; month <= noOfMonths; month++) {
+                createEl("li", { text: MONTHS[startMonth % 12], parent: heatmapCalendarMonthsUl, })
+                startMonth++;
+            }
 
             const heatmapCalendarDaysUl = createEl("ul", {
                 cls: "heatmap-calendar-days",
                 parent: heatmapCalendarGraphDiv,
             })
 
-			const WEEKS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-			WEEKS.map(e => createEl("li", { text: e, parent: heatmapCalendarDaysUl, }))
+            const WEEKS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            WEEKS.map(e => createEl("li", { text: e, parent: heatmapCalendarDaysUl, }))
 
             const heatmapCalendarBoxesUl = createEl("ul", {
                 cls: "heatmap-calendar-boxes",
                 parent: heatmapCalendarGraphDiv,
             })
 
-			let noOfWeeks = Math.floor(numberOfDaysInYearEndDate / 7) + 1
-			heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks}, minmax(0, 1fr))`)
+            let noOfWeeks = Math.floor(numberOfDaysInYearEndDate / 7) + 1
+            heatmapCalendarBoxesUl.style.setProperty("grid-template-columns", `repeat(${noOfWeeks}, minmax(0, 1fr))`)
             boxes.forEach(e => {
                 const entry = createEl("li", {
                     attr: {
