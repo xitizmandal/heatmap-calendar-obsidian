@@ -4,8 +4,8 @@ import HeatmapCalendarSettingsTab from "settings"
 interface CalendarData {
     year: number,
     month?: number,
-    startDate: string,
-    endDate: string,
+    startDate?: string,
+    endDate?: string,
     colors: {
         [index: string | number]: string[]
     } | string
@@ -30,8 +30,6 @@ interface Entry {
 }
 const DEFAULT_SETTINGS: CalendarData = {
     year: new Date().getFullYear(),
-    startDate: new Date(new Date().getFullYear(), 0, 1).toString(),
-    endDate: new Date(new Date().getFullYear(), 11, 31).toString(),
     colors: {
         default: ["#c6e48b", "#7bc96f", "#49af5d", "#2e8840", "#196127",],
     },
@@ -99,7 +97,7 @@ export default class HeatmapCalendar extends Plugin {
         window.renderHeatmapCalendar = (el: HTMLElement, calendarData: CalendarData): void => {
 
             const year = calendarData.year ?? this.settings.year
-            const month = calendarData.month ?? -1
+            const month = (calendarData.month ?? 0 ) - 1
             const colors = typeof calendarData.colors === "string"
                 ? this.settings.colors[calendarData.colors]
                     ? { [calendarData.colors]: this.settings.colors[calendarData.colors], }
@@ -108,20 +106,32 @@ export default class HeatmapCalendar extends Plugin {
 
             this.removeHtmlElementsNotInYear(calendarData.entries, year)
 
-            // TODO: Need to filter this based on range of dates
-            const startDateString = calendarData.startDate ?? this.settings.startDate
-            const endDateString = calendarData.endDate ?? this.settings.endDate
+			//NOTE: check if calendarData date needs to be converted to UTC
+			const startDate = ((year:number, month: number) => {
+				if (month > -1) {
+					return new Date(Date.UTC(year, month, 1))
+				} else if (calendarData.startDate) {
+					return new Date(calendarData.startDate)
+				} else {
+					return new Date(Date.UTC(year, 0, 1))
+				}
+			})(year, month)
 
-            // FIX: check for date ranges
-            const startDate = month > -1 ? new Date(year, month, 1) : new Date(startDateString)
-            const endDate = month > -1 ? new Date(year, month + 1, 0) : new Date(endDateString)
-            console.log(startDate, endDate)
+			const endDate = ((year:number, month: number) => {
+				if (month > -1) {
+					return new Date(Date.UTC(year, month+1, 0))
+				} else if (calendarData.endDate) {
+					return new Date(calendarData.endDate)
+				} else {
+					return new Date(Date.UTC(year, 11, 31))
+				}
+			})(year, month)
 
+			console.log(startDate, endDate)
             const calEntries = calendarData.entries.filter(e => {
-                let d = new Date(e.date + "T00:00")
+                let d = new Date(e.date)
                 return d >= startDate && d <= endDate
-            }
-            )
+            })
 
             const showCurrentDayBorder = calendarData.showCurrentDayBorder ?? this.settings.showCurrentDayBorder
 
@@ -134,7 +144,6 @@ export default class HeatmapCalendar extends Plugin {
             const intensityScaleEnd = calendarData.intensityScaleEnd ?? maximumIntensity
 
             const mappedEntries: Entry[] = []
-			// TODO: Check for the entries
             calEntries.forEach(e => {
                 const newEntry = {
                     intensity: defaultEntryIntensity,
@@ -151,10 +160,9 @@ export default class HeatmapCalendar extends Plugin {
 
                 mappedEntries[this.getHowManyDaysIntoYear(new Date(e.date))] = newEntry
             })
-			console.log(calEntries)
 
-            const firstDayOfYear = new Date(Date.UTC(year, 0, 1))
-            let numberOfEmptyDaysBeforeYearBegins = (firstDayOfYear.getUTCDay() + 6) % 7
+            const startDateUTC = new Date(Date.UTC(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()))
+			let numberOfEmptyDaysBeforeYearBegins = (startDateUTC.getUTCDay() + 6) % 7
 
             interface Box {
                 backgroundColor?: string;
@@ -169,18 +177,16 @@ export default class HeatmapCalendar extends Plugin {
                 boxes.push({ backgroundColor: "transparent", })
                 numberOfEmptyDaysBeforeYearBegins--
             }
-            const lastDayOfYear = new Date(Date.UTC(year, 11, 31))
-			// TODO: Fix the number of days correspondances with
-			// 1. Boxes
-			// 2. Entries
-			// 3. CSS/Views
-            // const numberOfDaysInYear = this.getHowManyDaysIntoYear(lastDayOfYear) //eg 365 or 366
-			const numberOfDaysInYear = this.getDaysInBetween(startDate, endDate)
+            const endDateUTC = new Date(Date.UTC(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()))
+			const numberOfDaysInYearStartDate = this.getHowManyDaysIntoYear(startDateUTC)
+			//
+			// TODO: calculate days based on years and not 365
+			const numberOfDaysInYearEndDate = (endDateUTC.getFullYear() - startDateUTC.getFullYear()) * 365 + this.getHowManyDaysIntoYear(endDateUTC)
             const todaysDayNumberLocal = this.getHowManyDaysIntoYearLocal(new Date())
+			console.log(numberOfDaysInYearEndDate)
 
 
-            for (let day = 1; day <= numberOfDaysInYear; day++) {
-
+            for (let day = numberOfDaysInYearStartDate; day <= numberOfDaysInYearEndDate; day++) {
                 const box: Box = {
                     classNames: [],
                 }
