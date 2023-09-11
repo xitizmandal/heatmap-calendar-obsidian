@@ -108,23 +108,15 @@ export default class HeatmapCalendar extends Plugin {
 
 			//NOTE: check if calendarData date needs to be converted to UTC
 			const startDate = ((year:number, month: number) => {
-				if (month > -1) {
-					return new Date(Date.UTC(year, month, 1))
-				} else if (calendarData.startDate) {
-					return new Date(calendarData.startDate)
-				} else {
-					return new Date(Date.UTC(year, 0, 1))
-				}
+				if (month > -1) return new Date(Date.UTC(year, month, 1))
+				else if (calendarData.startDate) return new Date(calendarData.startDate)
+				else return new Date(Date.UTC(year, 0, 1))
 			})(year, month)
 
 			const endDate = ((year:number, month: number) => {
-				if (month > -1) {
-					return new Date(Date.UTC(year, month+1, 0))
-				} else if (calendarData.endDate) {
-					return new Date(calendarData.endDate)
-				} else {
-					return new Date(Date.UTC(year, 11, 31))
-				}
+				if (month > -1) return new Date(Date.UTC(year, month+1, 0))
+				else if (calendarData.endDate) return new Date(calendarData.endDate)
+				else return new Date(Date.UTC(year, 11, 31))
 			})(year, month)
 
             const calEntries = calendarData.entries.filter(e => {
